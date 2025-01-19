@@ -130,6 +130,9 @@ Sign_SonicRun:	; Routine 6
 GotThroughAct:
 		cmpi.b	#id_GotThroughCard,(v_objspace+$5C0).w
 		beq.s	locret_ECEE
+		
+		moveq	#17,d0
+		jsr	PlayCDDA
 
 		move.w	(v_limitright2).w,(v_limitleft2).w
 		move.b	#id_GotThroughCard,(v_objspace+$5C0).w

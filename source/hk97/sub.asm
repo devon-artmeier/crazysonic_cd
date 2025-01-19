@@ -179,6 +179,14 @@ HongKong97:
 	lea	cddaParam(pc),a0				; Play music
 	BIOS_MSCPLAYR
 
+.WaitCDDA:
+	BIOS_CDBSTAT						; Get BIOS status
+	move.w	(a0),d0
+	bmi.s	.WaitCDDA					; If the CD isn't ready, wait
+	andi.w	#$FF00,d0					; Is CDDA playing?
+	cmpi.w	#$100,d0
+	bne.s	.WaitCDDA					; If not, wait
+
 	moveq	#2-1,d1						; Initialize HUD
 
 .InitHUD:

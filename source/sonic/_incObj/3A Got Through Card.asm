@@ -23,17 +23,18 @@ got_finalX:	equ $32		; position for card to finish on
 ; ===========================================================================
 
 Got_ChkPLC:	; Routine 0
+		jsr	CheckCDDA
+		beq.s	.End
 		tst.l	(v_plc_buffer).w ; are the pattern load cues empty?
 		beq.s	Got_Main	; if yes, branch
+
+.End:
 		rts	
 ; ===========================================================================
 
 Got_Main:
 		lea	CBPCM_Stop,a1
 		jsr	CallSubFunction
-		
-		moveq	#17,d0
-		jsr	PlayCDDA
 	
 		movea.l	a0,a1
 		lea	(Got_Config).l,a2

@@ -324,6 +324,10 @@ Cred_ClrPal:
 	jsr	PalLoad1	; load Sonic's palette
 	move.b	#id_CreditsText,(v_objspace+$80).w ; load credits object
 
+.WaitCDPlay:
+	jsr	CheckCDDA
+	beq.s	.WaitCDPlay
+
 	move.w	(v_vdp_buffer1).w,d0
 	ori.b	#$40,d0
 	move.w	d0,(VDP_CTRL).l

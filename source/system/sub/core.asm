@@ -125,6 +125,7 @@ SystemMain:
 	dc.l	Cmd_WriteWord					; Write word
 	dc.l	Cmd_WriteLong					; Write longword
 	dc.l	Cmd_CallFunc					; Call function
+	dc.l	Cmd_CheckCDDA					; Check CDDA playing
 
 ; -------------------------------------------------------------------------
 
@@ -264,6 +265,26 @@ Cmd_CallFunc:
 	move.w	COMM_CMD_2.w,d0
 	movea.l	COMM_CMD_0.w,a0
 	jmp	(a0)
+
+; -------------------------------------------------------------------------
+; Check if CDDA is playing
+; -------------------------------------------------------------------------
+
+Cmd_CheckCDDA:
+	BIOS_CDBSTAT						; Get BIOS status
+	move.w	(a0),d0
+	bmi.s	.NotPlaying					; If the CD isn't ready, branch
+	andi.w	#$FF00,d0					; Is CDDA playing?
+	cmpi.w	#$100,d0
+	beq.s	.Playing					; If so, branch
+
+.NotPlaying:
+	clr.b	COMM_STAT_0.w					; Not playing
+	rts
+
+.Playing:
+	st	COMM_STAT_0.w					; Playing
+	rts
 
 ; -------------------------------------------------------------------------
 ; Mega Drive interrupt

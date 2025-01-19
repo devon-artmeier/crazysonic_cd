@@ -6,17 +6,14 @@
 ; PCM register write
 ; -------------------------------------------------------------------------
 ; PARAMETERS:
-;	val   - Value to write
-;	reg   - Register to write to
-;	delay - Register for handling delay
+;	dreg  - Register for handling delay
 ; -------------------------------------------------------------------------
 
-PCM_WRITE macro val, reg, delay
-	move.b	\val,\reg
-	moveq	#20,\delay
-	dbf	\delay,*
+PCM_DELAY macro dreg
+	moveq	#$80-1,\dreg
+	dbf	\dreg,*
 	endm
-	
+
 ; -------------------------------------------------------------------------
 ; Initialize
 ; -------------------------------------------------------------------------
@@ -24,14 +21,15 @@ PCM_WRITE macro val, reg, delay
 InitPCM:
 	moveq	#-1,d0						; Disable PCM channels
 	move.b	d0,pcmOnOff
-	PCM_WRITE d0,PCM_ENABLE,d0
+	move.b	d0,PCM_ENABLE
+	PCM_DELAY d0
 	
 	moveq	#$FFFFFF80,d1					; Initial wave bank
 	moveq	#16-1,d2					; Fill 16 wave banks
 	
 .BankLoop:
-	PCM_WRITE d1,PCM_CTRL,d0				; Select wave bank
-	PCM_WRITE d1,PCM_CTRL,d0
+	move.b	d1,PCM_CTRL					; Select wave bank
+	PCM_DELAY d0
 	
 	lea	WAVE_START,a1					; Fill wave bank with loop flags
 	move.w	#$1000-1,d0
@@ -52,15 +50,23 @@ InitPCM:
 	lea	pcmVolumes(pc),a1				; Saved volumes
 	
 .InitRegs:
-	PCM_WRITE d1,PCM_CTRL,d0				; Set register ID
+	move.b	d1,PCM_CTRL					; Set register ID
+	PCM_DELAY d0
 	
-	PCM_WRITE d3,PCM_ENV,d0					; Mute channel
-	PCM_WRITE #$FF,PCM_PAN,d0				; Set panning
-	PCM_WRITE d3,PCM_FDL,d0					; Clear frequency
-	PCM_WRITE d3,PCM_FDH,d0
-	PCM_WRITE d3,PCM_LSL,d0					; Reset loop address
-	PCM_WRITE d3,PCM_LSH,d0
-	PCM_WRITE d3,PCM_ST,d0					; Reset start address
+	move.b	d3,PCM_ENV					; Mute channel
+	PCM_DELAY d0
+	move.b	#$FF,PCM_PAN					; Set panning
+	PCM_DELAY d0
+	move.b	d3,PCM_FDL					; Clear frequency
+	PCM_DELAY d0
+	move.b	d3,PCM_FDH
+	PCM_DELAY d0
+	move.b	d3,PCM_LSL					; Reset loop address
+	PCM_DELAY d0
+	move.b	d3,PCM_LSH
+	PCM_DELAY d0
+	move.b	d3,PCM_ST					; Reset start address
+	PCM_DELAY d0
 	
 	clr.w	(a0)+						; Reset saved frequency and volume
 	clr.b	(a1)+
@@ -68,7 +74,7 @@ InitPCM:
 	addq.b	#1,d1						; Next register
 	dbf	d2,.InitRegs					; Loop until registers are set up
 	rts
-	
+
 ; -------------------------------------------------------------------------
 ; Load PCM sample
 ; -------------------------------------------------------------------------
@@ -107,8 +113,8 @@ LoadPCMSample:
 	subq.w	#1,d1
 	bmi.s	.Done
 	
-	PCM_WRITE d2,PCM_CTRL,d4				; Set wave bank
-	PCM_WRITE d2,PCM_CTRL,d4
+	move.b	d2,PCM_CTRL					; Set wave bank
+	PCM_DELAY d4
 
 .CopySample:
 	move.b	(a0)+,(a1)+					; Copy sample
@@ -134,13 +140,15 @@ LoadPCMSample:
 SetPCMVolume:
 	move.b	d0,d2						; Set register ID
 	ori.b	#$C0,d0
-	PCM_WRITE d0,PCM_CTRL,d3
+	move.b	d0,PCM_CTRL
+	PCM_DELAY d3
 	
 	lea	pcmVolumes(pc),a6				; Save volume
 	andi.w	#7,d2
 	move.b	d1,(a6,d2.w)
 	
-	PCM_WRITE d1,PCM_ENV,d3					; Set volume
+	move.b	d1,PCM_ENV					; Set volume
+	PCM_DELAY d3
 	rts
 	
 ; -------------------------------------------------------------------------
@@ -153,9 +161,11 @@ SetPCMVolume:
 
 SetPCMPanning:
 	ori.b	#$C0,d0						; Set register ID
-	PCM_WRITE d0,PCM_CTRL,d2
+	move.b	d0,PCM_CTRL
+	PCM_DELAY d2
 	
-	PCM_WRITE d1,PCM_PAN,d2					; Set panning
+	move.b	d1,PCM_PAN					; Set panning
+	PCM_DELAY d2
 	rts
 
 ; -------------------------------------------------------------------------
@@ -169,16 +179,19 @@ SetPCMPanning:
 SetPCMFrequency:
 	move.b	d0,d2						; Set register ID
 	ori.b	#$C0,d0
-	PCM_WRITE d0,PCM_CTRL,d3
+	move.b	d0,PCM_CTRL
+	PCM_DELAY d3
 	
 	lea	pcmFreqs(pc),a6					; Save frequency
 	andi.w	#7,d2
 	add.b	d2,d2
 	move.w	d1,(a6,d2.w)
 	
-	PCM_WRITE d1,PCM_FDL,d3					; Set frequency
+	move.b	d1,PCM_FDL					; Set frequency
+	PCM_DELAY d3
 	move.w	d1,-(sp)
-	PCM_WRITE (sp)+,PCM_FDH,d3
+	move.b	(sp)+,PCM_FDH
+	PCM_DELAY d3
 	rts
 
 ; -------------------------------------------------------------------------
@@ -191,9 +204,11 @@ SetPCMFrequency:
 
 SetPCMStart:
 	ori.b	#$C0,d0						; Set register ID
-	PCM_WRITE d0,PCM_CTRL,d2
+	move.b	d0,PCM_CTRL
+	PCM_DELAY d2
 	
-	PCM_WRITE d1,PCM_ST,d2					; Set start address
+	move.b	d1,PCM_ST					; Set start address
+	PCM_DELAY d2
 	rts
 	
 ; -------------------------------------------------------------------------
@@ -206,11 +221,14 @@ SetPCMStart:
 
 SetPCMLoop:
 	ori.b	#$C0,d0						; Set register ID
-	PCM_WRITE d0,PCM_CTRL,d2
+	move.b	d0,PCM_CTRL
+	PCM_DELAY d2
 	
-	PCM_WRITE d1,PCM_LSL,d2					; Set loop address
+	move.b	d1,PCM_LSL					; Set loop address
+	PCM_DELAY d2
 	move.w	d1,-(sp)
-	PCM_WRITE (sp)+,PCM_LSH,d2
+	move.b	(sp)+,PCM_LSH
+	PCM_DELAY d2
 	rts
 
 ; -------------------------------------------------------------------------
@@ -221,9 +239,11 @@ SetPCMLoop:
 ; -------------------------------------------------------------------------
 
 PlayPCM:
-	bsr.s	StopPCM
-	bclr	d0,pcmOnOff
-	PCM_WRITE pcmOnOff(pc),PCM_ENABLE,d1
+	bsr.s	StopPCM						; Stop channel
+	
+	bclr	d0,pcmOnOff					; Play channel
+	move.b	pcmOnOff(pc),PCM_ENABLE
+	PCM_DELAY d1
 	rts
 	
 ; -------------------------------------------------------------------------
@@ -234,8 +254,9 @@ PlayPCM:
 ; -------------------------------------------------------------------------
 
 StopPCM:
-	bset	d0,pcmOnOff
-	PCM_WRITE pcmOnOff(pc),PCM_ENABLE,d1
+	bset	d0,pcmOnOff					; Stop channel
+	move.b	pcmOnOff(pc),PCM_ENABLE
+	PCM_DELAY d1
 	rts
 	
 ; -------------------------------------------------------------------------
@@ -243,8 +264,9 @@ StopPCM:
 ; -------------------------------------------------------------------------
 
 StopAllPCM:
-	st	pcmOnOff
-	PCM_WRITE pcmOnOff(pc),PCM_ENABLE,d1
+	st	pcmOnOff					; Stop all channels
+	move.b	pcmOnOff(pc),PCM_ENABLE
+	PCM_DELAY d1
 	rts
 
 ; -------------------------------------------------------------------------
@@ -253,12 +275,16 @@ StopAllPCM:
 
 PausePCM:
 	ori.b	#$C0,d0						; Set register ID
-	PCM_WRITE d0,PCM_CTRL,d1
+	move.b	d0,PCM_CTRL
+	PCM_DELAY d1
 	
 	moveq	#0,d1						; Pause
-	PCM_WRITE d1,PCM_ENV,d2
-	PCM_WRITE d1,PCM_FDL,d2
-	PCM_WRITE d1,PCM_FDH,d2
+	move.b	d1,PCM_ENV
+	PCM_DELAY d2
+	move.b	d1,PCM_FDL
+	PCM_DELAY d2
+	move.b	d1,PCM_FDH
+	PCM_DELAY d2
 	rts
 	
 ; -------------------------------------------------------------------------
@@ -268,17 +294,21 @@ PausePCM:
 UnpausePCM:
 	move.b	d0,d1						; Set register ID
 	ori.b	#$C0,d0
-	PCM_WRITE d0,PCM_CTRL,d2
+	move.b	d0,PCM_CTRL
+	PCM_DELAY d2
 	
 	andi.w	#7,d1						; Restore volume
 	move.b	pcmVolumes(pc,d1.w),d2
-	PCM_WRITE d2,PCM_ENV,d2
+	move.b	d2,PCM_ENV
+	PCM_DELAY d2
 	
 	add.b	d1,d1						; Restore frequency
 	move.b	pcmFreqs+1(pc,d1.w),d2
-	PCM_WRITE d2,PCM_FDL,d2
+	move.b	d2,PCM_FDL
+	PCM_DELAY d2
 	move.b	pcmFreqs(pc,d1.w),d2
-	PCM_WRITE d2,PCM_FDH,d2
+	move.b	d2,PCM_FDH
+	PCM_DELAY d2
 	rts
 
 ; -------------------------------------------------------------------------

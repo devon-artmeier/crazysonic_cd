@@ -164,7 +164,7 @@ SpecialStage:
 ; -------------------------------------------------------------------------
 
 RenderBuffer1:
-	move	#$2700,sr					; Prepare
+	move	#$2700,sr					; Start next update
 	move.w	v_jpadhold1.w,COMM_CMD_7
 	move.w	#256,bufferOffset
 	move.l	#SSVInt_Buf11,vintRoutine
@@ -186,7 +186,7 @@ RenderBuffer1:
 ; -------------------------------------------------------------------------
 
 RenderBuffer2:
-	move	#$2700,sr					; Prepare
+	move	#$2700,sr					; Start next update
 	move.w	v_jpadhold1.w,COMM_CMD_7
 	clr.w	bufferOffset
 	move.l	#SSVInt_Buf21,vintRoutine

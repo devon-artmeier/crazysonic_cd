@@ -58,10 +58,10 @@ Pal_Cutscene4:
 	even
 
 Art_Graphics:
-	incbin	"source/hk97/data/graphics.nem"
+	incbin	"source/hk97/data/graphics.kos"
 	even
 Art_Background:
-	incbin	"source/hk97/data/background.nem"
+	incbin	"source/hk97/data/background.kos"
 	even
 Map_Border:
 	incbin	"source/hk97/data/bordermap.eni"

@@ -341,11 +341,11 @@ effectFlags		rs.b	1
 effectTriggers		rs.b	1
 effectWaterPal		rs.w	$40
 effectPalette		rs.w	$40
-raveDelay		rs.w	1
 raveTimer		rs.w	1
+raveDelay		rs.w	1
+raveMusic		rs.b	1
+			rs.b	1
 raveColors		rs.l	1
-raveUpdate		rs.b	1
-lsdUpdate		rs.b	1
 lsdTimer		rs.w	1
 lsdDelay		rs.w	1
 lsdColors		rs.l	1

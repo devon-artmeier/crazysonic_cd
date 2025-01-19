@@ -68,6 +68,14 @@ ActorBoss_Cutscene:
 	lea	cddaParam(pc),a0
 	move.w	#7,(a0)
 	BIOS_MSCPLAYR
+
+.WaitCDDA:
+	BIOS_CDBSTAT						; Get BIOS status
+	move.w	(a0),d0
+	bmi.s	.WaitCDDA					; If the CD isn't ready, wait
+	andi.w	#$FF00,d0					; Is CDDA playing?
+	cmpi.w	#$100,d0
+	bne.s	.WaitCDDA					; If not, wait
 	movem.l	(sp)+,d5/d7/a0-a1
 
 	st	bossCutscene					; Set boss cutscene flag

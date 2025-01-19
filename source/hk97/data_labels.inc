@@ -1,13 +1,13 @@
-pal_hk97 EQU $20f3ea
+pal_hk97 EQU $20f14e
 art_title EQU $200000
 map_title EQU $202900
 pal_title EQU $20297c
-art_background EQU $20e504
+art_background EQU $20e382
 art_cutscene2 EQU $206d38
 map_cutscene2 EQU $20b4d4
 pal_cutscene2 EQU $20b59a
 art_graphics EQU $20d6c6
-map_border EQU $20f336
+map_border EQU $20f09a
 art_cutscene1 EQU $20299c
 map_cutscene1 EQU $206c7a
 pal_cutscene1 EQU $206d18

@@ -52,6 +52,7 @@ HongKong97:
 	move.w	#$8700,(a0)
 	move.w	#$8B00,(a0)
 	move.w	#$9011,(a0)
+	clr.b	displayEnabled
 
 	move.w	#$8F01,(a0)					; Clear VRAM
 	VRAM_FILL 0,0,$10000,(a0),-4(a0)
@@ -61,6 +62,10 @@ HongKong97:
 
 	moveq	#5,d0						; Play title music
 	bsr.w	LoopCDDA
+
+.WaitCDPlay:
+	jsr	CheckCDDA
+	beq.s	.WaitCDPlay
 
 	lea	Art_Title,a0					; Title screen
 	lea	Map_Title,a1
@@ -94,24 +99,24 @@ HongKong97:
 	bsr.w	StopCDDA					; Stop music
 	
 	lea	Art_Graphics,a0					; Load main graphics
-	VDP_CMD move.l,$DE80,VRAM,WRITE,VDP_CTRL
-	bsr.w	NemDec
+	lea	$FFFFDE80.w,a2
+	bsr.w	LoadKosArt
 	
 	lea	Art_Background,a0				; Load main background
-	VDP_CMD move.l,$A000,VRAM,WRITE,VDP_CTRL
-	bsr.w	NemDec
+	lea	$FFFFA000.w,a2
+	bsr.w	LoadKosArt
 	
 	lea	Map_Border,a0					; Decompress border tilemap
-	lea	mapBuffer(pc),a1
+	lea	decompBuffer(pc),a1
 	move.w	#$8000|($DE80/$20),d0
 	bsr.w	EniDec
 	
-	lea	mapBuffer(pc),a1				; Draw border tilemap
+	lea	decompBuffer(pc),a1				; Draw border tilemap
 	VDP_CMD move.l,$C000,VRAM,WRITE,d0
 	moveq	#$28-1,d1
 	moveq	#$1C-1,d2
 	bsr.w	TilemapToVRAM
-	lea	mapBuffer(pc),a1
+	lea	decompBuffer(pc),a1
 	VDP_CMD move.l,$D000,VRAM,WRITE,d0
 	moveq	#$28-1,d1
 	moveq	#$1C-1,d2
@@ -160,6 +165,7 @@ HongKong97:
 	bne.s	.NoFade
 
 	move.w	#$8174,VDP_CTRL					; Fade from black
+	st	displayEnabled
 	bsr.w	PaletteFadeIn
 
 ; -------------------------------------------------------------------------
@@ -218,21 +224,21 @@ CheckPause:
 ; -------------------------------------------------------------------------
 
 RenderBuffer1:
-	bsr.w	CheckPause					; Check for pausing
-
 	move	#$2700,sr					; Start next update
 	move.w	v_jpadhold1.w,COMM_CMD_7
-	moveq	#1,d0
-	bsr.w	HK97SubCmdStart
-
-	st	v_vbla_routine.w				; Copy frame to VRAM
 	move.l	#HK97VInt_Buf11,vintRoutine
 	move	#$2300,sr
-	bsr.w	WaitForVBla
-	st	v_vbla_routine.w
-	bsr.w	WaitForVBla
 	
-	bsr.w	HK97SubCmdEnd					; Wait for finish
+	moveq	#1,d0						; Render frame
+	bsr.w	HK97SubCmdStart
+
+.WaitRender:
+	cmpi.l	#HK97VInt_End,vintRoutine			; Wait for current render
+	bne.s	.WaitRender
+	
+	bsr.w	HK97SubCmdEnd					; Wait for the Sub CPU to finish
+	
+	bsr.w	CheckPause					; Check for pausing
 	bra.s	CheckFlags					; Check flags
 
 ; -------------------------------------------------------------------------
@@ -241,24 +247,24 @@ RenderBuffer2:
 	tst.b	skipBuffer2					; Should this be skipped?
 	bne.s	.SkipBuffer2					; If so, branch
 
-	bsr.w	CheckPause					; Check for pausing
-
 	move	#$2700,sr					; Start next update
 	move.w	v_jpadhold1.w,COMM_CMD_7
-	moveq	#1,d0
-	bsr.w	HK97SubCmdStart
-
-	st	v_vbla_routine.w				; Copy frame to VRAM
 	move.l	#HK97VInt_Buf21,vintRoutine
 	move	#$2300,sr
-	bsr.w	WaitForVBla
-	st	v_vbla_routine.w
-	bsr.w	WaitForVBla
 	
-	bsr.w	HK97SubCmdEnd					; Wait for finish
+	moveq	#1,d0						; Render frame
+	bsr.w	HK97SubCmdStart
+
+.WaitRender:
+	cmpi.l	#HK97VInt_End,vintRoutine			; Wait for current render
+	bne.s	.WaitRender
+	
+	bsr.w	HK97SubCmdEnd					; Wait for the Sub CPU to finish
+	
+	bsr.w	CheckPause					; Check for pausing
 	bra.s	CheckFlags					; Check flags
 
-.SkipBuffer2
+.SkipBuffer2:
 	clr.b	skipBuffer2					; Clear skip flag
 	rts
 
@@ -394,12 +400,12 @@ RunBossCutscene:
 	VDP_CMD move.l,0,VSRAM,WRITE,(a0)			; Move away from loading zone
 	move.w	#-256,-4(a0)
 
-	VDP_CMD move.l,0,VRAM,WRITE,VDP_CTRL			; Load cutscene art
-	lea	Art_Cutscene(pc),a0
-	bsr.w	NemDec
+	lea	Art_Cutscene(pc),a0				; Load cutscene art
+	lea	0.w,a2
+	bsr.w	LoadKosArt
 
 	lea	Map_Cutscene(pc),a0				; Decompress cutscene map
-	lea	mapBuffer,a1
+	lea	decompBuffer,a1
 	move.w	#$E000,d0
 	bsr.w	EniDec
 
@@ -446,23 +452,16 @@ RunBossCutscene:
 	move.w	#$1000,hudBossHP				; Initialize boss HP bar
 	bsr.w	DrawBossHP
 
-GoBackToLevel:
-	move.w	#$2700,sr					; Go back to buffer 1
-	st	skipBuffer2
+; -------------------------------------------------------------------------
 
+GoBackToLevel:
+	move.w	#$2700,sr					; Disable interrupts
+
+	st	skipBuffer2					; Go back to buffer 1
 	clr.w	v_jpadhold1.w					; Clear controller data
 
-	lea	VDP_CTRL,a0					; Wait until start of V-BLANK
-
-.WaitVBlankEnd:
-	move	(a0),ccr
-	bmi.s	.WaitVBlankEnd
-
-.WaitVBlankStart:
-	move	(a0),ccr
-	bpl.s	.WaitVBlankStart
-
-	move.w	#$8F01,(a0)					; Clear out field graphics
+	lea	VDP_CTRL,a0
+	move.w	#$8F01,(a0)
 	VRAM_FILL 0,0,$A000,(a0),-4(a0)
 	move.w	#$8F02,(a0)
 	
@@ -480,17 +479,8 @@ GoBackToLevel:
 RunGameOver:
 	move	#$2700,sr					; Disable interrupts
 
-	lea	VDP_CTRL,a0					; Wait until start of V-BLANK
-
-.WaitVBlankEnd:
-	move	(a0),ccr
-	bmi.s	.WaitVBlankEnd
-
-.WaitVBlankStart:
-	move	(a0),ccr
-	bpl.s	.WaitVBlankStart
-
-	move.w	#$8F01,(a0)					; Clear out field graphics
+	lea	VDP_CTRL,a0					; Clear out field graphics
+	move.w	#$8F01,(a0)
 	VRAM_FILL 0,0,$A000,(a0),-4(a0)
 	move.w	#$8F02,(a0)
 
@@ -506,9 +496,9 @@ RunGameOver:
 	clr.l	(a0)+
 	dbf	d0,.ClearSprites
 
-	VDP_CMD move.l,0,VRAM,WRITE,VDP_CTRL			; Load game over art
-	lea	Art_GameOver(pc),a0		
-	bsr.w	NemDec
+	lea	Art_GameOver(pc),a0				; Load game over art
+	lea	0.w,a2
+	bsr.w	LoadKosArt
 
 ; -------------------------------------------------------------------------
 
@@ -671,11 +661,12 @@ GameEnding:
 	move.w	#$8400|(vram_bg/$2000),(a0)
 	move.w	#$8C81,(a0)
 	move.w	#$9001,(a0)
+	clr.b	displayEnabled
 	bsr.w	ClearScreen
 
-	VDP_CMD move.l,$20,VRAM,WRITE,VDP_CTRL			; Load BSOD art
-	lea	Art_BSOD(pc),a0
-	bsr.w	NemDec
+	lea	Art_BSOD(pc),a0					; Load BSOD art
+	lea	$20.w,a2
+	bsr.w	LoadKosArt
 
 	lea	Pal_BSOD(pc),a0					; Load BSOD palette
 	lea	v_pal_dry.w,a1
@@ -690,6 +681,7 @@ GameEnding:
 	bsr.w	DrawBSODText
 
 	move.w	#$8174,VDP_CTRL					; Enable display
+	st	displayEnabled
 
 .BSODWait:
 	st	v_vbla_routine.w				; Wait for user input
@@ -980,7 +972,6 @@ VInt_Image:
 	bsr.w	ReadJoypads					; Read controller data
 	DMA_68K v_pal_dry,0,$80,CRAM,(a5)			; Copy palette
 	bsr.w	ProcessDMAQueue					; Process DMA queue
-
 	START_Z80
 
 	movem.l	(sp)+,d0-a6					; Restore registers
@@ -1012,81 +1003,76 @@ VInt_HK97:
 ; -------------------------------------------------------------------------
 
 HK97VInt_Buf11:
-	bsr.w	ReadJoypads
-	
-	VDP_CMD move.l,0,VSRAM,WRITE,(a5)
+	VDP_CMD move.l,0,VSRAM,WRITE,(a5)			; Update VSRAM
 	move.w	#-256,-4(a5)
 
-	DMA_68K v_pal_dry,0,$80,CRAM,(a5)
+	DMA_68K v_pal_dry,0,$80,CRAM,(a5)			; Update palette
 	
-	DMA_68K spritesExt+2,vram_sprites,$280,VRAM,(a5)
+	DMA_68K spritesExt+2,vram_sprites,$280,VRAM,(a5)	; Update sprites
 	VDP_CMD move.l,vram_sprites,VRAM,WRITE,(a5)
 	move.l	spritesExt,-4(a5)
 
-	DMA_68K IMG_SRC_1+2,IMG_VRAM_11,IMG_COPY_1,VRAM,(a5)
+	DMA_68K IMG_SRC_1+2,IMG_VRAM_11,IMG_COPY_1,VRAM,(a5)	; Copy render
 	VDP_CMD move.l,IMG_VRAM_11,VRAM,WRITE,(a5)
 	move.l	IMG_SRC_1,-4(a5)
 
-	move.l	#HK97VInt_Buf12,vintRoutine
+	move.l	#HK97VInt_Buf12,vintRoutine			; Set next V-BLANK interrupt routine
 	rts
 	
 ; -------------------------------------------------------------------------
 
 HK97VInt_Buf12:
-	DMA_68K IMG_SRC_2+2,IMG_VRAM_12,IMG_COPY_2,VRAM,(a5)
+	DMA_68K IMG_SRC_2+2,IMG_VRAM_12,IMG_COPY_2,VRAM,(a5)	; Copy render
 	VDP_CMD move.l,IMG_VRAM_12,VRAM,WRITE,(a5)
 	move.l	IMG_SRC_2,-4(a5)
 
-	bsr.w	UpdateHUD
-	move.l	#HK97VInt_Busy,vintRoutine
-	rts
+	bsr.w	UpdateHUD					; Update HUD
+	move.l	#HK97VInt_End,vintRoutine			; Set next V-BLANK interrupt routine
+	bra.w	ReadJoypads					; Read controllers
 	
 ; -------------------------------------------------------------------------
 
 HK97VInt_Buf21:
-	bsr.w	ReadJoypads
-	
-	VDP_CMD move.l,0,VSRAM,WRITE,(a5)
+	VDP_CMD move.l,0,VSRAM,WRITE,(a5)			; Update VSRAM
 	move.w	#0,-4(a5)
 
-	DMA_68K v_pal_dry,0,$80,CRAM,(a5)
+	DMA_68K v_pal_dry,0,$80,CRAM,(a5)			; Update palette
 
-	DMA_68K spritesExt+2,vram_sprites,$280,VRAM,(a5)
+	DMA_68K spritesExt+2,vram_sprites,$280,VRAM,(a5)	; Update sprites
 	VDP_CMD move.l,vram_sprites,VRAM,WRITE,(a5)
 	move.l	spritesExt,-4(a5)
 	
-	DMA_68K IMG_SRC_1+2,IMG_VRAM_21,IMG_COPY_1,VRAM,(a5)
+	DMA_68K IMG_SRC_1+2,IMG_VRAM_21,IMG_COPY_1,VRAM,(a5)	; Copy render
 	VDP_CMD move.l,IMG_VRAM_21,VRAM,WRITE,(a5)
 	move.l	IMG_SRC_1,-4(a5)
 
-	move.l	#HK97VInt_Buf22,vintRoutine
+	move.l	#HK97VInt_Buf22,vintRoutine			; Set next V-BLANK interrupt routine
 	rts
 	
 ; -------------------------------------------------------------------------
 
 HK97VInt_Buf22:
-	DMA_68K IMG_SRC_2+2,IMG_VRAM_22,IMG_COPY_2,VRAM,(a5)
+	DMA_68K IMG_SRC_2+2,IMG_VRAM_22,IMG_COPY_2,VRAM,(a5)	; Copy render
 	VDP_CMD move.l,IMG_VRAM_22,VRAM,WRITE,(a5)
 	move.l	IMG_SRC_2,-4(a5)
 
-	bsr.w	UpdateHUD
-	move.l	#HK97VInt_Busy,vintRoutine
-	rts
+	bsr.w	UpdateHUD					; Update HUD
+	move.l	#HK97VInt_End,vintRoutine			; Set next V-BLANK interrupt routine
+	bra.w	ReadJoypads					; Read controllers
 
 ; -------------------------------------------------------------------------
 
-HK97VInt_Busy:
-	bsr.w	ReadJoypads
-	
-	VDP_CMD move.l,0,VSRAM,WRITE,(a5)
+HK97VInt_End:
+	VDP_CMD move.l,0,VSRAM,WRITE,(a5)			; Update VSRAM
 	move.w	#0,-4(a5)
 
-	DMA_68K v_pal_dry,0,$80,CRAM,(a5)
+	DMA_68K v_pal_dry,0,$80,CRAM,(a5)			; Update palette
 
-	DMA_68K spritesExt+2,vram_sprites,$280,VRAM,(a5)
+	DMA_68K spritesExt+2,vram_sprites,$280,VRAM,(a5)	; Update sprites
 	VDP_CMD move.l,vram_sprites,VRAM,WRITE,(a5)
 	move.l	spritesExt,-4(a5)
-	rts
+	
+	bra.w	ReadJoypads					; Read controllers
 
 ; -------------------------------------------------------------------------
 ; Update HUD
@@ -1422,6 +1408,7 @@ DrawImage:
 	move	#$2700,sr
 	bsr.w	ClearScreen
 	move.w	#$8134,VDP_CTRL	
+	clr.b	displayEnabled
 
 	VDP_CMD move.l,0,VRAM,WRITE,VDP_CTRL				; Clear first tile		
 	moveq	#0,d0
@@ -1434,7 +1421,7 @@ DrawImage:
 	bsr.w	NemDec
 	
 	movea.l	(sp)+,a0						; Decompress tilemap
-	lea	mapBuffer,a1
+	lea	decompBuffer,a1
 	move.w	#$8001,d0
 	bsr.w	EniDec
 
@@ -1452,6 +1439,7 @@ DrawImage:
 	dbf	d0,.LoadPal
 
 	move.w	#$8174,VDP_CTRL						; Enable display
+	st	displayEnabled
 	bsr.w	PaletteFadeIn						; Fade from black
 
 .WaitInput:
@@ -1582,23 +1570,61 @@ DrawBSODText:
 	dc.b 	$00,$00,$00,$00,$00,$00,$A3,$A3,$A4,$A4,$A5,$A5,$A6,$A6,$00,$A7
 
 ; -------------------------------------------------------------------------
+; Load Kosinski art
+; -------------------------------------------------------------------------
+; PARAMETERS:
+;	a0.l - Source address
+;	a2.w - VRAM address
+; -------------------------------------------------------------------------
+
+LoadKosArt:
+	lea	decompBuffer(pc),a1				; Decompress art
+	move.l	a1,-(sp)
+	bsr.w	KosDec
+
+	move.l	(sp)+,d1					; Queue DMA transfer
+	move.w	a2,d2
+	move.l	a1,d3
+	sub.l	d1,d3
+	bsr.w	QueueDMATransfer
+	
+; -------------------------------------------------------------------------
+
+	tst.b	displayEnabled					; Is display enabled?
+	beq.s	.SkipSync					; If not, branch
+
+.WaitVBlankEnd:
+	move	VDP_CTRL,ccr					; Wait until start of V-BLANK
+	bmi.s	.WaitVBlankEnd
+
+.WaitVBlankStart:
+	move	VDP_CTRL,ccr
+	bpl.s	.WaitVBlankStart
+
+.SkipSync:
+	STOP_Z80						; Process DMA queue
+	bsr.w	ProcessDMAQueue
+	START_Z80
+	rts
+
+; -------------------------------------------------------------------------
 ; Data
 ; -------------------------------------------------------------------------
 
 Art_Cutscene:
-	incbin	"source/hk97/data/cutsceneart.nem"
+	incbin	"source/hk97/data/cutsceneart.kos"
 	even
 Map_Cutscene:
 	incbin	"source/hk97/data/cutscenemap.eni"
 	even
 Art_GameOver:
-	incbin	"source/hk97/data/gameover.nem"
+	incbin	"source/hk97/data/gameover.kos"
 	even
 Pal_BossBG:
 	incbin	"source/hk97/data/bosspal.bin"
 	even
 Art_BSOD:
-	incbin	"source/hk97/data/bsod_art.nem"
+	incbin	"source/hk97/data/bsod_art.kos"
 	even
 Pal_BSOD:
 	incbin	"source/hk97/data/bsod_palette.bin"
@@ -1609,7 +1635,7 @@ Pal_BSOD:
 ; -------------------------------------------------------------------------
 
 vintRoutine:
-	dc.l	HK97VInt_Busy
+	dc.l	HK97VInt_End
 started:
 	dc.b	0
 palFadeCount:
@@ -1618,6 +1644,9 @@ credits:
 	dc.b	3
 skipBuffer2:
 	dc.b	0
-mapBuffer:
+displayEnabled:
+	dc.b	0
+	even
+decompBuffer:
 
 ; -------------------------------------------------------------------------

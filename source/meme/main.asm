@@ -88,6 +88,10 @@
 	moveq	#22,d0
 	jsr	LoopCDDA
 
+.WaitCDPlay:
+	jsr	CheckCDDA
+	beq.s	.WaitCDPlay
+
 ; -------------------------------------------------------------------------
 
 .Delay:

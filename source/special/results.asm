@@ -8,30 +8,18 @@ id_SSRChaos	EQU	$02
 ; -------------------------------------------------------------------------
 
 SpecStageResults:
-	clr.l	v_buildrings.w					; Don't draw HUD or rings
-	clr.l	v_buildhud.w
-	
-	move.l	#ObjIndex,v_objindex.w				; Set object index
-
-	move	#$2700,sr					; Clear screen
-	bsr.w	ClearScreen
-
-	lea	VDP_CTRL,a0					; Set up VDP registers
+	move	#$2700,sr					; Wait until V-BLANK
+	lea	VDP_CTRL,a0
 	
 .WaitVBlank:
 	move	(a0),ccr
 	bpl.s	.WaitVBlank
+
+	move.w	#$8134,(a0)					; Set up VDP registers
 	move.w	#$8C81,(a0)
+	move	#$2300,sr
 
-	lea	v_objspace.w,a1					; Clear objects
-	moveq	#0,d0
-	move.w	#$7FF,d1
-
-.ClearObjects:
-	move.l	d0,(a1)+
-	dbf	d1,.ClearObjects
-
-	move	#$2300,sr					; Enable interrupts
+	bsr.w	ClearScreen					; Clear screen
 
 	lea	Pal_SSResult(pc),a0				; Load palette
 	lea	v_pal_dry_dup.w,a1
@@ -40,8 +28,18 @@ SpecStageResults:
 .LoadPal:
 	move.l	(a0)+,(a1)+
 	dbf	d0,.LoadPal
+
+	move	#$2300,sr					; Enable interrupts
+
+	lea	v_objspace.w,a1					; Clear objects
+	moveq	#0,d0
+	move.w	#$7FF,d1
+
+.ClearObjects:
+	move.l	d0,(a1)+
+	dbf	d1,.ClearObjects
 	
-	VDP_CMD move.l,$A820,VRAM,WRITE,VDP_CTRL		; Load chaos tires\ art
+	VDP_CMD move.l,$A820,VRAM,WRITE,VDP_CTRL		; Load chaos tires art
 	lea	Art_ResultEm(pc),a0
 	bsr.w	NemDec
 	
@@ -52,6 +50,11 @@ SpecStageResults:
 	VDP_CMD move.l,$D940,VRAM,WRITE,VDP_CTRL		; Load HUD art
 	lea	Art_HUD(pc),a0
 	bsr.w	NemDec
+
+	clr.l	v_buildrings.w					; Don't draw HUD or rings
+	clr.l	v_buildhud.w
+	
+	move.l	#ObjIndex,v_objindex.w				; Set object index
 	
 	bsr.w	Hud_Base					; Initialize HUD elements
 
@@ -65,10 +68,14 @@ SpecStageResults:
 
 	move	#$2700,sr					; Set V-BLANK interrupt
 	move.l	#SSResultsVInt,_LEVEL6+2.w
-
-	jsr	PaletteWhiteIn					; Fade from white
+	
+	moveq	#17,d0						; Play music
+	jsr	PlayCDDA
 	
 	move.b	#id_SSResult,v_objspace+$5C0.w			; Spawn results
+
+	move.w	#$8174,VDP_CTRL					; Enable display
+	jsr	PaletteWhiteIn					; Fade from white
 	
 ; -------------------------------------------------------------------------
 

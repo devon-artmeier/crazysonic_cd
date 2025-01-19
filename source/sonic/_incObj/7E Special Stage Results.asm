@@ -24,9 +24,11 @@ ssr_mainX:	equ $30		; position for card to display on
 ; ===========================================================================
 
 SSR_Main:
-		moveq	#17,d0
-		jsr	PlayCDDA
-		
+		jsr	CheckCDDA
+		bne.s	.Initialize
+		rts
+
+.Initialize:
 		movea.l	a0,a1
 		lea	(SSR_Config).l,a2
 		moveq	#3,d1

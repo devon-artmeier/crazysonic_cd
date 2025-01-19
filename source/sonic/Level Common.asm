@@ -420,7 +420,7 @@ Level_GameOver:
 
 	lea	CBPCM_Stop,a1					; Stop sound
 	jsr	CallSubFunction
-	jsr	StopCDDA				
+	jsr	StopCDDA
 	
 	move	#$2700,sr
 	move.l	#VInt_GameOver,_LEVEL6+2.w
@@ -525,7 +525,7 @@ LevelDone:
 	
 	lea	CBPCM_Stop,a1					; Stop sound
 	jsr	CallSubFunction
-	jsr	StopCDDA				
+	jsr	StopCDDA
 	
 	move	#$2700,sr					; Only update sound
 	move.l	#VInt_Sound,_LEVEL6+2.w

@@ -96,7 +96,9 @@ BuildSprites_ApproxYCheck:
 		bhs.s	BuildSprites_NextObj
 
 BuildSprites_DrawSprite:
-		movea.l	obMap(a0),a1
+		move.l	obMap(a0),d1
+		beq.s	BuildSprites_NextObj
+		movea.l	d1,a1
 		moveq	#0,d1
 		btst	#5,d4		; is static mappings flag on?
 		bne.s	.drawFrame	; if yes, branch

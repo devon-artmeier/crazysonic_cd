@@ -8,7 +8,7 @@ RAVE_ACCUM	EQU	((RAVE_BPM*$10000)/3600)/2
 ; -------------------------------------------------------------------------
 
 InitRaveMode:
-	bset	#RAVE_MODE,effectFlags.w	
+	bset	#RAVE_MODE,effectFlags.w
 	bne.s	.Started
 
 	move.l	#RaveColorTable,raveColors.w
@@ -18,6 +18,8 @@ InitRaveMode:
 	else
 		move.w	#((51*60)*50)/60,raveTimer.w
 	endif
+	btst	#LSD_MODE,effectFlags.w	
+	sne	raveMusic.w
 	bra.w	PlayEffectMusic
 	
 .Started:
@@ -34,6 +36,8 @@ StopRaveMode:
 
 UpdateRaveTimer:
 	btst	#RAVE_MODE,effectFlags.w		; Check if on
+	beq.s	.End
+	tst.b	raveMusic.w				; Check music start
 	beq.s	.End
 	
 	tst.l	warpX.w					; Handle delay
@@ -67,6 +71,21 @@ UpdateRaveMode:
 
 	btst	#RAVE_MODE,effectFlags.w		; Check mode
 	beq.w	.End
+
+	tst.b	raveMusic.w				; Check music start
+	bne.w	.MusicPlaying
+	jsr	CheckCDDA
+	bne.w	.MusicPlaying
+
+	lea	v_pal_water.w,a0			; Don't affect palette until music has started
+	lea	effectWaterPal.w,a1
+	rept	$100/4
+		move.l	(a0)+,(a1)+
+	endr
+	rts
+
+.MusicPlaying:
+	st	raveMusic.w				; Music playing
 
 	lea	v_pal_water.w,a0			; Update palette
 	lea	effectWaterPal.w,a1

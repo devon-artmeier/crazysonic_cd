@@ -63,6 +63,8 @@ CrazyBusTitle:
 	lea	CBPCM_Play,a1
 	jsr	CallSubFunction
 
+	clr.w	v_demolength.w					; Reset timer
+
 ; -------------------------------------------------------------------------
 
 .Loop:

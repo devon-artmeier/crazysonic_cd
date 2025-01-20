@@ -21,9 +21,6 @@ StartLevel:
 	move.l	#Col_Level_1,v_colladdr1.w
 	move.l	#Col_Level_2,v_colladdr2.w
 
-	move.l	#VBlank,_LEVEL6+2.w
-	move.l	#HBlank,_LEVEL4+2.w
-
 	bra.s	GM_LevelStart
 	
 ; -------------------------------------------------------------------------
@@ -34,6 +31,10 @@ GM_Level:
 	
 	jsr	ClearPLC
 	jsr	PaletteFadeOut
+	
+	move	#$2700,sr
+	move.l	#VInt_Sound,_LEVEL6+2.w
+	move	#$2300,sr
 
 GM_LevelStart:
 	moveq	#0,d0
@@ -51,13 +52,16 @@ GM_LevelStart:
 	lea	CBPCM_Stop,a1
 	jsr	CallSubFunction
 	
-	disable_ints
 	VDP_CMD move.l,$B000,VRAM,WRITE,VDP_CTRL
 	lea	(Nem_TitleCard).l,a0 ; load title card patterns
 	jsr	NemDec
 	moveq	#plcid_Main,d0
 	jsr	QuickPLC
-	enable_ints
+
+	move	#$2700,sr
+	move.l	#VBlank,_LEVEL6+2.w
+	move.l	#HBlank,_LEVEL4+2.w
+	move	#$2300,sr
 
 	lea	(LevelHeaders).l,a2
 	moveq	#0,d0
@@ -102,10 +106,6 @@ Level_ClrVars3:
 	move.l	d0,(a1)+
 	dbf	d1,Level_ClrVars3
 
-	disable_ints
-	jsr	ClearScreen
-	jsr	InitDMAQueue
-
 	lea	(VDP_CTRL).l,a6
 	move.w	#$8B03,(a6)	; line scroll mode
 	move.w	#$8200+(vram_fg>>10),(a6) ; set foreground nametable address
@@ -119,6 +119,9 @@ Level_ClrVars3:
 	move.w	(v_vdp_buffer1).w,d0
 	ori.b	#$40,d0
 	move.w	d0,(a6)
+
+	jsr	ClearScreen
+	jsr	InitDMAQueue
 
 	move.w	#$1000,d0
 	move.w	d0,(v_waterpos1).w
@@ -142,7 +145,6 @@ Level_ClrVars3:
 	move.b	#1,(f_water).w	; enable water
 
 Level_LoadPal:
-	enable_ints
 	moveq	#palid_Sonic,d0
 	jsr	PalLoad2	; load Sonic's palette
 	cmpi.b	#id_LZ,(v_zone).w ; is level LZ?

@@ -1,8 +1,5 @@
 @echo off
 
-set REGION=USA
-set OUTPUT=MCD_U.iso
-
 set ASM68K=tools\asm68k.exe /p /o ae-,l.,m+,op+,os+,ow+,oz+,oaq+,osq+,omq+ /e REGION='%REGION%'
 
 if not exist build mkdir build > nul

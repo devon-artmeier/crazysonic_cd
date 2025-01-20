@@ -450,6 +450,13 @@ Level_GameOver:
 	move.l	d0,(a5)
 	dbf	d2,.ClearVSRAM
 
+	lea	Art_GameOver,a0
+	VDP_CMD move.l,0,VRAM,WRITE,(a6)
+	jsr	NemDec
+
+	moveq	#18,d0
+	jsr	PlayCDDA
+
 	lea	Pal_GameOver,a0
 	lea	v_pal_dry_dup.w,a1
 	moveq	#(($80/$04)/$04)-1,d3
@@ -461,12 +468,9 @@ Level_GameOver:
 	move.l	(a0)+,(a1)+
 	dbf	d3,.WritePalette
 
-	lea	Art_GameOver,a0
-	VDP_CMD move.l,0,VRAM,WRITE,(a6)
-	jsr	NemDec
-
-	moveq	#18,d0
-	jsr	PlayCDDA
+.WaitCDPlay:
+	jsr	CheckCDDA
+	beq.s	.WaitCDPlay
 	
 	move.w	#$8174,(a6)
 	jsr	PaletteFadeIn

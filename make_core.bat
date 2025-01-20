@@ -67,5 +67,4 @@ echo.
 tools\build-crazysonic-disc.exe -volname CRAZYSONIC -volver 1.0 -sysname CRAZYSONIC -sysver 1.0 -copy RALA -title "CrazySonic CD" -serial 69420666 -revision 69 -io J -region %REGION% -ip build\system\boot.bin -sp build\system\system.bin -dir build\files -o build\%OUTPUT%
 
 certutil -hashfile build\%OUTPUT% MD5
-
 pause

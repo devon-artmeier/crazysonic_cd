@@ -286,9 +286,6 @@ GM_Credits:
 	lea	CBPCM_Stop,a1
 	jsr	CallSubFunction
 	
-	moveq	#23,d0
-	jsr	LoopCDDA
-	
 	lea	(VDP_CTRL).l,a6
 	move.w	#$8004,(a6)		; 8-colour mode
 	move.w	#$8200+(vram_fg>>10),(a6) ; set foreground nametable address
@@ -319,6 +316,9 @@ Cred_ClrObjRam:
 Cred_ClrPal:
 	move.l	d0,(a1)+
 	dbf	d1,Cred_ClrPal ; fill palette with black
+	
+	moveq	#23,d0
+	jsr	LoopCDDA
 
 	moveq	#palid_Sonic,d0
 	jsr	PalLoad1	; load Sonic's palette

@@ -679,6 +679,9 @@ GameEnding:
 	movea.l	(sp)+,a0					; Draw text
 	VDP_CMD move.l,vram_fg+$82,VRAM,WRITE,d0
 	bsr.w	DrawBSODText
+	
+	st	v_vbla_routine.w				; VSync
+	jsr	WaitForVBla
 
 	move.w	#$8174,VDP_CTRL					; Enable display
 	st	displayEnabled

@@ -123,6 +123,8 @@ Level_ClrVars3:
 	jsr	ClearScreen
 	jsr	InitDMAQueue
 
+	jsr	PlayStageMusic
+
 	move.w	#$1000,d0
 	move.w	d0,(v_waterpos1).w
 	move.w	d0,(v_waterpos2).w
@@ -161,7 +163,9 @@ Level_WaterPal:
 	move.b	($FFFF8E53).w,(f_wtr_state).w
 
 Level_GetBgm:
-	jsr	PlayStageMusic
+	jsr	CheckCDDA
+	beq.s	Level_GetBgm
+
 	move.b	#id_TitleCard,(v_objspace+$80).w ; load title card object
 
 Level_TtlCardLoop:

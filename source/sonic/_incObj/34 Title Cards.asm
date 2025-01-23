@@ -18,11 +18,6 @@ card_finalX:	equ $32		; position for card to finish on
 ; ===========================================================================
 
 Card_CheckSBZ3:	; Routine 0
-		jsr	CheckCDDA
-		bne.s	.Initialize
-		rts
-
-.Initialize:
 		movea.l	a0,a1
 		moveq	#0,d0
 		move.b	(v_zone).w,d0

@@ -424,12 +424,13 @@ Level_GameOver:
 	jsr	PlaySound_Special
 	jsr	PaletteFadeOut
 
+	move	#$2700,sr					; Only update sound
+	move.l	#VInt_Sound,_LEVEL6+2.w
+	move	#$2300,sr
+
 	lea	CBPCM_Stop,a1					; Stop sound
 	jsr	CallSubFunction
 	jsr	StopCDDA
-	
-	move	#$2700,sr
-	move.l	#VInt_GameOver,_LEVEL6+2.w
 
 	lea	VDP_DATA,a5
 	lea	VDP_CTRL,a6
@@ -475,6 +476,9 @@ Level_GameOver:
 .WaitCDPlay:
 	jsr	CheckCDDA
 	beq.s	.WaitCDPlay
+	
+	move	#$2700,sr
+	move.l	#VInt_GameOver,_LEVEL6+2.w
 	
 	move.w	#$8174,(a6)
 	jsr	PaletteFadeIn

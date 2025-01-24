@@ -38,8 +38,6 @@ IMG_END		EQU	IMG_VRAM_22+IMG_LENGTH
 ; -------------------------------------------------------------------------
 
 HongKong97:
-	move	#$2700,sr					; Set up interrupts
-
 	clr.l	v_cheatbutton.w					; Reset skip cheat
 
 	bsr.w	ClearScreen					; Clear screen
@@ -94,6 +92,8 @@ HongKong97:
 	
 	bsr.w	PaletteFadeOut					; Fade to black
 	move	#$2700,sr
+	move.l	#VInt_Sound,_LEVEL6+2.w
+	move	#$2300,sr
 	
 	bsr.w	ClearScreen					; Clear screen
 	bsr.w	StopCDDA					; Stop music

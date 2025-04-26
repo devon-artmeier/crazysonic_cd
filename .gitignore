@@ -1,4 +1,4 @@
-build/files
-build/system
+out/files
+out/system
 *.iso
 *.lst
